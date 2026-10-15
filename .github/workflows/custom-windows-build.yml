@@ -59,7 +59,7 @@ jobs:
       - name: Build RustDesk
         shell: bash
         run: |
-          cargo build --release --features inline
+          cargo build --release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
