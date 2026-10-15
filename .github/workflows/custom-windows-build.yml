@@ -55,7 +55,8 @@ jobs:
         run: |
           cargo build --release --features inline
         env:
-          VCPKG_ROOT: ${{ env.RUNNER_TEMP }}\vcpkg
+          VCPKG_ROOT: D:\a\_temp\vcpkg
+          VCPKG_DEFAULT_TRIPLET: x64-windows-static
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
