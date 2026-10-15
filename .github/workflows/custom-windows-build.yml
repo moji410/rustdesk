@@ -62,9 +62,17 @@ jobs:
         run: |
           flutter doctor -v
           flutter precache --windows
+          # Derive the SDK root from the flutter on PATH so this works whether the
+          # action installs into <base> or <base>/flutter (layout differs by action version).
+          $binDir = Split-Path -Parent (Get-Command flutter).Source
+          $flutterRoot = Split-Path -Parent $binDir
+          $dest = Join-Path $flutterRoot "bin\cache\artifacts\engine\windows-x64-release"
+          Write-Host "Flutter root: $flutterRoot"
+          Write-Host "Engine dest: $dest"
           Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
           Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
-          mv -Force windows-x64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-x64-release/
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Copy-Item -Force -Recurse "windows-x64-release\*" $dest
 
       - name: Patch flutter
         shell: bash
