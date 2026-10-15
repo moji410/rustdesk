@@ -1,0 +1,65 @@
+name: Custom Windows Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
+          cd $env:RUNNER_TEMP\vcpkg
+          .\bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RUNNER_TEMP }}\vcpkg\installed
+          key: vcpkg-${{ env.VCPKG_COMMIT_ID }}-windows
+
+      - name: Install dependencies with vcpkg
+        run: |
+          cd $env:RUNNER_TEMP\vcpkg
+          .\vcpkg install --triplet x64-windows-static
+
+      - name: Build RustDesk
+        run: |
+          cargo build --release --features inline
+        env:
+          VCPKG_ROOT: ${{ env.RUNNER_TEMP }}\vcpkg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-windows-x64
+          path: target/release/rustdesk.exe
+          if-no-files-found: error
