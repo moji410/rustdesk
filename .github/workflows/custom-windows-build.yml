@@ -21,6 +21,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -33,30 +40,24 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
 
-      - name: Install vcpkg
-        run: |
-          git clone https://github.com/Microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
-          cd $env:RUNNER_TEMP\vcpkg
-          .\bootstrap-vcpkg.bat
-          echo "VCPKG_ROOT=$env:RUNNER_TEMP\vcpkg" >> $env:GITHUB_ENV
-
-      - name: Cache vcpkg binaries
-        uses: actions/cache@v4
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
         with:
-          path: ${{ env.RUNNER_TEMP }}\vcpkg\installed
-          key: vcpkg-${{ env.VCPKG_COMMIT_ID }}-windows
+          vcpkgDirectory: D:\a\_temp\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
 
-      - name: Install dependencies with vcpkg
+      - name: Install vcpkg dependencies
+        shell: bash
         run: |
-          cd $env:RUNNER_TEMP\vcpkg
-          .\vcpkg install --x-manifest-root=$env:GITHUB_WORKSPACE --triplet x64-windows-static
+          $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Build RustDesk
+        shell: bash
         run: |
           cargo build --release --features inline
-        env:
-          VCPKG_ROOT: D:\a\_temp\vcpkg
-          VCPKG_DEFAULT_TRIPLET: x64-windows-static
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
